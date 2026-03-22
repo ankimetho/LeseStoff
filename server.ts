@@ -33,6 +33,29 @@ db.exec(`
     date TEXT NOT NULL, -- YYYY-MM-DD
     FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS reading_progress (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL,
+    user_id TEXT DEFAULT 'default',
+    position TEXT, -- page number or EPUB CFI
+    progress_percent REAL DEFAULT 0,
+    completed INTEGER DEFAULT 0,
+    time_spent_seconds INTEGER DEFAULT 0,
+    last_read DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+    UNIQUE(book_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS session_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL,
+    user_id TEXT DEFAULT 'default',
+    duration_seconds INTEGER NOT NULL,
+    pages_read INTEGER DEFAULT 0,
+    logged_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+  );
 `);
 
 const storage = multer.diskStorage({
@@ -114,12 +137,168 @@ async function startServer() {
     const today = new Date().toISOString().split("T")[0];
     const task = db.prepare(`
       SELECT s.*, b.title as book_title, b.filename
-      FROM schedule s 
+      FROM schedule s
       JOIN books b ON s.book_id = b.id
       WHERE s.date = ?
       LIMIT 1
     `).get(today) as any;
     res.json(task || null);
+  });
+
+  // Reading progress endpoints
+  app.get("/api/progress", (req, res) => {
+    const { user_id = 'default' } = req.query;
+    const progress = db.prepare(`
+      SELECT p.*, b.title as book_title, b.filename
+      FROM reading_progress p
+      JOIN books b ON p.book_id = b.id
+      WHERE p.user_id = ?
+      ORDER BY p.last_read DESC
+    `).all(user_id);
+    res.json(progress);
+  });
+
+  app.get("/api/progress/:bookId", (req, res) => {
+    const { bookId } = req.params;
+    const { user_id = 'default' } = req.query;
+    const progress = db.prepare(`
+      SELECT * FROM reading_progress
+      WHERE book_id = ? AND user_id = ?
+    `).get(bookId, user_id);
+    res.json(progress || null);
+  });
+
+  // Get/save progress by filename (for the reader, which only knows the filename)
+  app.get("/api/progress/by-filename/:filename", (req, res) => {
+    const { filename } = req.params;
+    const { user_id = 'default' } = req.query;
+    const book = db.prepare("SELECT id FROM books WHERE filename = ?").get(filename) as any;
+    if (!book) return res.json(null);
+    const progress = db.prepare(`
+      SELECT * FROM reading_progress WHERE book_id = ? AND user_id = ?
+    `).get(book.id, user_id);
+    res.json(progress ? { ...progress, book_id: book.id } : { book_id: book.id });
+  });
+
+  app.post("/api/progress/by-filename/:filename", (req, res) => {
+    const { filename } = req.params;
+    const { user_id = 'default', position, progress_percent, completed, time_spent_seconds } = req.body;
+    const book = db.prepare("SELECT id FROM books WHERE filename = ?").get(filename) as any;
+    if (!book) return res.status(404).json({ error: "Book not found" });
+    db.prepare(`
+      INSERT INTO reading_progress (book_id, user_id, position, progress_percent, completed, time_spent_seconds, last_read)
+      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(book_id, user_id) DO UPDATE SET
+        position = excluded.position,
+        progress_percent = excluded.progress_percent,
+        completed = excluded.completed,
+        time_spent_seconds = time_spent_seconds + excluded.time_spent_seconds,
+        last_read = CURRENT_TIMESTAMP
+    `).run(book.id, user_id, position, progress_percent || 0, completed ? 1 : 0, time_spent_seconds || 0);
+    res.json({ success: true, book_id: book.id });
+  });
+
+  app.post("/api/session/by-filename/:filename", (req, res) => {
+    const { filename } = req.params;
+    const { user_id = 'default', duration_seconds, pages_read } = req.body;
+    const book = db.prepare("SELECT id FROM books WHERE filename = ?").get(filename) as any;
+    if (!book) return res.status(404).json({ error: "Book not found" });
+    db.prepare(`
+      INSERT INTO session_logs (book_id, user_id, duration_seconds, pages_read)
+      VALUES (?, ?, ?, ?)
+    `).run(book.id, user_id, duration_seconds, pages_read || 0);
+    res.json({ success: true });
+  });
+
+  app.post("/api/progress", (req, res) => {
+    const { book_id, user_id = 'default', position, progress_percent, completed, time_spent_seconds } = req.body;
+    
+    // Upsert reading progress
+    db.prepare(`
+      INSERT INTO reading_progress (book_id, user_id, position, progress_percent, completed, time_spent_seconds, last_read)
+      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(book_id, user_id) DO UPDATE SET
+        position = excluded.position,
+        progress_percent = excluded.progress_percent,
+        completed = excluded.completed,
+        time_spent_seconds = time_spent_seconds + excluded.time_spent_seconds,
+        last_read = CURRENT_TIMESTAMP
+    `).run(book_id, user_id, position, progress_percent, completed ? 1 : 0, time_spent_seconds || 0);
+
+    res.json({ success: true });
+  });
+
+  app.post("/api/session", (req, res) => {
+    const { book_id, user_id = 'default', duration_seconds, pages_read } = req.body;
+    db.prepare(`
+      INSERT INTO session_logs (book_id, user_id, duration_seconds, pages_read)
+      VALUES (?, ?, ?, ?)
+    `).run(book_id, user_id, duration_seconds, pages_read || 0);
+    res.json({ success: true });
+  });
+
+  // Statistics endpoint
+  app.get("/api/stats", (req, res) => {
+    const { user_id = 'default' } = req.query;
+    
+    // Total books read (completed)
+    const totalBooksRead = db.prepare(`
+      SELECT COUNT(*) as count FROM reading_progress
+      WHERE user_id = ? AND completed = 1
+    `).get(user_id) as { count: number };
+
+    // Total time spent (all time)
+    const totalTime = db.prepare(`
+      SELECT COALESCE(SUM(time_spent_seconds), 0) as total FROM reading_progress
+      WHERE user_id = ?
+    `).get(user_id) as { total: number };
+
+    // Current streak (consecutive days with reading)
+    const sessions = db.prepare(`
+      SELECT DATE(logged_at) as date
+      FROM session_logs
+      WHERE user_id = ?
+      GROUP BY DATE(logged_at)
+      ORDER BY date DESC
+    `).all(user_id) as { date: string }[];
+
+    let streak = 0;
+    const today = new Date().toISOString().split('T')[0];
+    let expectedDate = today;
+    
+    for (const session of sessions) {
+      if (session.date === expectedDate) {
+        streak++;
+        const prevDate = new Date(expectedDate);
+        prevDate.setDate(prevDate.getDate() - 1);
+        expectedDate = prevDate.toISOString().split('T')[0];
+      } else if (session.date < expectedDate) {
+        break;
+      }
+    }
+
+    // Books in progress
+    const booksInProgress = db.prepare(`
+      SELECT COUNT(*) as count FROM reading_progress
+      WHERE user_id = ? AND completed = 0 AND progress_percent > 0
+    `).get(user_id) as { count: number };
+
+    // Recent sessions (last 7 days)
+    const recentSessions = db.prepare(`
+      SELECT DATE(logged_at) as date, SUM(duration_seconds) as duration
+      FROM session_logs
+      WHERE user_id = ? AND logged_at >= datetime('now', '-7 days')
+      GROUP BY DATE(logged_at)
+      ORDER BY date DESC
+    `).all(user_id) as { date: string; duration: number }[];
+
+    res.json({
+      totalBooksRead: totalBooksRead.count,
+      totalTimeSeconds: totalTime.total,
+      currentStreak: streak,
+      booksInProgress: booksInProgress.count,
+      recentSessions: recentSessions.map(s => ({ date: s.date, durationMinutes: Math.round(s.duration / 60) }))
+    });
   });
 
   // Serve book files
