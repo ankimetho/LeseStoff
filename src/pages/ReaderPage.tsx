@@ -24,9 +24,32 @@ export default function ReaderPage() {
   
   // EPUB State
   const [rendition, setRendition] = useState<Rendition | null>(null);
+  const [theme, setTheme] = useState<"default" | "sepia" | "dark">("default");
+  const [fontSize, setFontSize] = useState(100);
   const epubContainerRef = useRef<HTMLDivElement>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const themes = {
+    default: {
+      body: {
+        background: "#ffffff !important",
+        color: "#000000 !important",
+      }
+    },
+    sepia: {
+      body: {
+        background: "#f4ecd8 !important",
+        color: "#5b4636 !important",
+      }
+    },
+    dark: {
+      body: {
+        background: "#18181b !important",
+        color: "#d4d4d8 !important",
+      }
+    }
+  };
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -119,6 +142,11 @@ export default function ReaderPage() {
     
     rend.display().then(() => {
       setIsLoading(false);
+      // Register themes
+      rend.themes.register("default", themes.default);
+      rend.themes.register("sepia", themes.sepia);
+      rend.themes.register("dark", themes.dark);
+      rend.themes.select(theme);
     }).catch(err => {
       console.error("Error displaying EPUB:", err);
       setError("EPUB konnte nicht geladen werden.");
@@ -127,10 +155,24 @@ export default function ReaderPage() {
     
     setRendition(rend);
     
+    const handleResize = () => {
+      rend.resize();
+    };
+    window.addEventListener("resize", handleResize);
+    
     return () => {
+      window.removeEventListener("resize", handleResize);
       book.destroy();
     };
   }, [isEpub, filename, fileUrl]);
+
+  // Update EPUB theme and font size when they change
+  useEffect(() => {
+    if (rendition) {
+      rendition.themes.select(theme);
+      rendition.themes.fontSize(`${fontSize}%`);
+    }
+  }, [theme, fontSize, rendition]);
 
   const handlePrev = () => {
     if (isPdf && pageNum > 1) {
@@ -161,14 +203,132 @@ export default function ReaderPage() {
             <ArrowLeft size={20} />
           </button>
           <div className="h-6 w-px bg-white/10 mx-1" />
-          <h1 className="text-sm font-medium tracking-wide text-zinc-400 truncate max-w-[200px] sm:max-w-md">
+          <h1 className="text-sm font-medium tracking-wide text-zinc-400 truncate max-w-[150px] sm:max-w-md">
             {filename}
           </h1>
         </div>
         
         <div className="flex items-center gap-2">
+          <button 
+            onClick={toggleFullscreen}
+            className="p-2 hover:bg-white/10 rounded-lg transition-all"
+          >
+            {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Content Area */}
+      <div className={`flex-1 overflow-auto flex items-center justify-center relative transition-colors duration-300 ${isEpub && theme === 'dark' ? 'bg-zinc-950' : isEpub && theme === 'sepia' ? 'bg-[#e8dfc8]' : 'bg-zinc-900'}`}>
+        <AnimatePresence>
+          {isLoading && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-zinc-900 gap-4 text-emerald-500"
+            >
+              <Loader2 size={48} className="animate-spin" />
+              <p className="text-sm font-medium animate-pulse">Buch wird vorbereitet...</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {error ? (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center space-y-4 p-8 bg-zinc-800 rounded-3xl border border-red-500/20 max-w-sm z-50"
+          >
+            <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 mx-auto">
+              <BookOpen size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-white">Hoppla!</h3>
+            <p className="text-zinc-400 text-sm">{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-zinc-700 text-white rounded-xl hover:bg-zinc-600 transition-colors"
+            >
+              Erneut versuchen
+            </button>
+          </motion.div>
+        ) : (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full h-full flex items-center justify-center p-4 sm:p-8"
+          >
+            <div className="w-full max-w-5xl h-full bg-white shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden flex items-center justify-center relative">
+              {isPdf ? (
+                <div className="w-full h-full overflow-auto flex justify-center bg-zinc-200">
+                  <canvas ref={canvasRef} className="shadow-2xl my-4" />
+                </div>
+              ) : isEpub ? (
+                <div ref={epubContainerRef} className="w-full h-full epub-viewer" />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center p-12 text-center space-y-6">
+                  <img 
+                    src={fileUrl} 
+                    alt="Book Content" 
+                    className="max-w-full max-h-full object-contain shadow-lg"
+                  />
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Reader Footer Controls */}
+      <div className="bg-zinc-900/95 backdrop-blur-md px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-6 text-white border-t border-white/5">
+        {/* Left: Visibility Options */}
+        <div className="flex items-center gap-4 order-2 sm:order-1">
+          {isEpub && (
+            <>
+              <div className="flex items-center bg-zinc-800 rounded-lg p-1">
+                <button 
+                  onClick={() => setFontSize(s => Math.max(50, s - 10))}
+                  className="p-1.5 hover:bg-white/10 rounded-md transition-colors"
+                  title="Schrift verkleinern"
+                >
+                  <ZoomOut size={16} />
+                </button>
+                <span className="text-xs font-mono w-10 text-center opacity-60">
+                  {fontSize}%
+                </span>
+                <button 
+                  onClick={() => setFontSize(s => Math.min(200, s + 10))}
+                  className="p-1.5 hover:bg-white/10 rounded-md transition-colors"
+                  title="Schrift vergrößern"
+                >
+                  <ZoomIn size={16} />
+                </button>
+              </div>
+              <div className="flex items-center bg-zinc-800 rounded-lg p-1">
+                <button 
+                  onClick={() => setTheme("default")}
+                  className={`w-6 h-6 rounded-md border border-white/10 m-0.5 transition-all ${theme === "default" ? "ring-2 ring-emerald-500 scale-110" : "hover:scale-105"}`}
+                  style={{ background: "#ffffff" }}
+                  title="Hell"
+                />
+                <button 
+                  onClick={() => setTheme("sepia")}
+                  className={`w-6 h-6 rounded-md border border-white/10 m-0.5 transition-all ${theme === "sepia" ? "ring-2 ring-emerald-500 scale-110" : "hover:scale-105"}`}
+                  style={{ background: "#f4ecd8" }}
+                  title="Sepia"
+                />
+                <button 
+                  onClick={() => setTheme("dark")}
+                  className={`w-6 h-6 rounded-md border border-white/10 m-0.5 transition-all ${theme === "dark" ? "ring-2 ring-emerald-500 scale-110" : "hover:scale-105"}`}
+                  style={{ background: "#18181b" }}
+                  title="Dunkel"
+                />
+              </div>
+            </>
+          )}
+
           {isPdf && (
-            <div className="flex items-center bg-zinc-800 rounded-lg p-1 mr-4">
+            <div className="flex items-center bg-zinc-800 rounded-lg p-1">
               <button 
                 onClick={() => setScale(s => Math.max(0.5, s - 0.2))}
                 className="p-1.5 hover:bg-white/10 rounded-md transition-colors"
@@ -186,109 +346,46 @@ export default function ReaderPage() {
               </button>
             </div>
           )}
-          
+        </div>
+
+        {/* Center: Navigation */}
+        <div className="flex items-center gap-8 order-1 sm:order-2">
           <button 
-            onClick={toggleFullscreen}
-            className="p-2 hover:bg-white/10 rounded-lg transition-all"
+            onClick={handlePrev}
+            disabled={isLoading || (isPdf && pageNum <= 1)}
+            className="p-3 hover:bg-emerald-500/20 hover:text-emerald-400 rounded-full transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-white group"
           >
-            {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+            <ChevronLeft size={32} className="group-active:-translate-x-1 transition-transform" />
+          </button>
+          
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-xs font-bold tracking-widest uppercase opacity-40">
+              {isPdf ? "Seite" : isEpub ? "Fortschritt" : "Vorschau"}
+            </span>
+            <div className="text-lg font-mono font-bold text-emerald-500">
+              {isPdf ? (
+                <span className="flex items-center gap-2">
+                  {pageNum} <span className="opacity-30 text-sm">/</span> {numPages}
+                </span>
+              ) : isEpub ? (
+                "Lesen..."
+              ) : (
+                "1 / 1"
+              )}
+            </div>
+          </div>
+
+          <button 
+            onClick={handleNext}
+            disabled={isLoading || (isPdf && pageNum >= numPages)}
+            className="p-3 hover:bg-emerald-500/20 hover:text-emerald-400 rounded-full transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-white group"
+          >
+            <ChevronRight size={32} className="group-active:translate-x-1 transition-transform" />
           </button>
         </div>
-      </div>
 
-      {/* Content Area */}
-      <div className="flex-1 overflow-auto bg-zinc-900 flex items-center justify-center relative">
-        <AnimatePresence mode="wait">
-          {isLoading ? (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex flex-col items-center gap-4 text-emerald-500"
-            >
-              <Loader2 size={48} className="animate-spin" />
-              <p className="text-sm font-medium animate-pulse">Buch wird vorbereitet...</p>
-            </motion.div>
-          ) : error ? (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center space-y-4 p-8 bg-zinc-800 rounded-3xl border border-red-500/20 max-w-sm"
-            >
-              <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 mx-auto">
-                <BookOpen size={32} />
-              </div>
-              <h3 className="text-xl font-bold text-white">Hoppla!</h3>
-              <p className="text-zinc-400 text-sm">{error}</p>
-              <button 
-                onClick={() => window.location.reload()}
-                className="px-6 py-2 bg-zinc-700 text-white rounded-xl hover:bg-zinc-600 transition-colors"
-              >
-                Erneut versuchen
-              </button>
-            </motion.div>
-          ) : (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="w-full h-full flex items-center justify-center p-4 sm:p-8"
-            >
-              <div className="w-full max-w-5xl h-full bg-white shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden flex items-center justify-center relative">
-                {isPdf ? (
-                  <div className="w-full h-full overflow-auto flex justify-center bg-zinc-200">
-                    <canvas ref={canvasRef} className="shadow-2xl my-4" />
-                  </div>
-                ) : isEpub ? (
-                  <div ref={epubContainerRef} className="w-full h-full epub-viewer" />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center p-12 text-center space-y-6">
-                    <img 
-                      src={fileUrl} 
-                      alt="Book Content" 
-                      className="max-w-full max-h-full object-contain shadow-lg"
-                    />
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Reader Footer Controls */}
-      <div className="bg-zinc-900/95 backdrop-blur-md px-6 py-4 flex items-center justify-center gap-12 text-white border-t border-white/5">
-        <button 
-          onClick={handlePrev}
-          disabled={isLoading || (isPdf && pageNum <= 1)}
-          className="p-3 hover:bg-emerald-500/20 hover:text-emerald-400 rounded-full transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-white group"
-        >
-          <ChevronLeft size={32} className="group-active:-translate-x-1 transition-transform" />
-        </button>
-        
-        <div className="flex flex-col items-center gap-1">
-          <span className="text-xs font-bold tracking-widest uppercase opacity-40">
-            {isPdf ? "Seite" : isEpub ? "Fortschritt" : "Vorschau"}
-          </span>
-          <div className="text-lg font-mono font-bold text-emerald-500">
-            {isPdf ? (
-              <span className="flex items-center gap-2">
-                {pageNum} <span className="opacity-30 text-sm">/</span> {numPages}
-              </span>
-            ) : isEpub ? (
-              "Lesen..."
-            ) : (
-              "1 / 1"
-            )}
-          </div>
-        </div>
-
-        <button 
-          onClick={handleNext}
-          disabled={isLoading || (isPdf && pageNum >= numPages)}
-          className="p-3 hover:bg-emerald-500/20 hover:text-emerald-400 rounded-full transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-white group"
-        >
-          <ChevronRight size={32} className="group-active:translate-x-1 transition-transform" />
-        </button>
+        {/* Right: Empty space for balance on desktop */}
+        <div className="hidden sm:block w-48 order-3" />
       </div>
 
       {/* Global styles for EPUB.js iframe content if needed */}
