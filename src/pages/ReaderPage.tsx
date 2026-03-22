@@ -34,6 +34,10 @@ export default function ReaderPage() {
 
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const fileUrl = `/api/books/content/${filename}`;
+  const isPdf = filename?.toLowerCase().endsWith(".pdf");
+  const isEpub = filename?.toLowerCase().endsWith(".epub");
+
   // Save PDF progress
   useEffect(() => {
     if (isPdf && filename) {
@@ -77,10 +81,6 @@ export default function ReaderPage() {
     document.addEventListener("fullscreenchange", handleFsChange);
     return () => document.removeEventListener("fullscreenchange", handleFsChange);
   }, []);
-
-  const fileUrl = `/api/books/content/${filename}`;
-  const isPdf = filename?.toLowerCase().endsWith(".pdf");
-  const isEpub = filename?.toLowerCase().endsWith(".epub");
 
   // PDF Rendering Logic
   const renderPage = useCallback(async (num: number, doc: pdfjsLib.PDFDocumentProxy) => {
