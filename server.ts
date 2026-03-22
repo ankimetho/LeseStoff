@@ -75,7 +75,7 @@ async function startServer() {
 
   app.delete("/api/books/:id", (req, res) => {
     const { id } = req.params;
-    const book = db.prepare("SELECT filename FROM books WHERE id = ?").get() as any;
+    const book = db.prepare("SELECT filename FROM books WHERE id = ?").get(id) as any;
     if (book) {
       const filePath = path.join(UPLOADS_DIR, book.filename);
       if (fs.existsSync(filePath)) {
