@@ -17,8 +17,12 @@ export default function ReaderPage() {
   
   // PDF State
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
-  const [pageNum, setPageNum] = useState(1);
+  const [pageNum, setPageNum] = useState(() => {
+    const saved = localStorage.getItem(`reading_progress_pdf_${filename}`);
+    return saved ? parseInt(saved, 10) : 1;
+  });
   const [numPages, setNumPages] = useState(0);
+  const [epubProgress, setEpubProgress] = useState<{ current: number; total: number } | null>(null);
   const [scale, setScale] = useState(1.5);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
@@ -29,6 +33,13 @@ export default function ReaderPage() {
   const epubContainerRef = useRef<HTMLDivElement>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Save PDF progress
+  useEffect(() => {
+    if (isPdf && filename) {
+      localStorage.setItem(`reading_progress_pdf_${filename}`, pageNum.toString());
+    }
+  }, [pageNum, isPdf, filename]);
 
   const themes = {
     default: {
@@ -110,7 +121,7 @@ export default function ReaderPage() {
         setPdfDoc(doc);
         setNumPages(doc.numPages);
         setIsLoading(false);
-        renderPage(1, doc);
+        renderPage(pageNum, doc); // Use saved pageNum
       } catch (err) {
         console.error("Error loading PDF:", err);
         setError("PDF konnte nicht geladen werden.");
@@ -140,7 +151,9 @@ export default function ReaderPage() {
       manager: "default",
     });
     
-    rend.display().then(() => {
+    const savedLocation = localStorage.getItem(`reading_progress_epub_${filename}`);
+    
+    rend.display(savedLocation || undefined).then(() => {
       setIsLoading(false);
       // Register themes
       rend.themes.register("default", themes.default);
@@ -151,6 +164,20 @@ export default function ReaderPage() {
       console.error("Error displaying EPUB:", err);
       setError("EPUB konnte nicht geladen werden.");
       setIsLoading(false);
+    });
+    
+    rend.on("relocated", (location: any) => {
+      if (filename) {
+        localStorage.setItem(`reading_progress_epub_${filename}`, location.start.cfi);
+        
+        // Try to get page info if available
+        if (location.start.displayed) {
+          setEpubProgress({
+            current: location.start.displayed.page,
+            total: location.start.displayed.total
+          });
+        }
+      }
     });
     
     setRendition(rend);
@@ -368,7 +395,13 @@ export default function ReaderPage() {
                   {pageNum} <span className="opacity-30 text-sm">/</span> {numPages}
                 </span>
               ) : isEpub ? (
-                "Lesen..."
+                epubProgress ? (
+                  <span className="flex items-center gap-2">
+                    {epubProgress.current} <span className="opacity-30 text-sm">/</span> {epubProgress.total}
+                  </span>
+                ) : (
+                  "Lesen..."
+                )
               ) : (
                 "1 / 1"
               )}
