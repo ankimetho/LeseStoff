@@ -1,1 +1,50 @@
 @import "tailwindcss";
+
+:root {
+  --woozel-bg: linear-gradient(180deg, #fffdf7 0%, #eef7ff 52%, #f7fbff 100%);
+  --font-woozel: "Trebuchet MS", "Verdana", "Avenir Next Rounded", "Comic Sans MS", sans-serif;
+}
+
+html {
+  min-height: 100%;
+  background: #ffffff;
+}
+
+body {
+  min-height: 100vh;
+}
+
+body.woozel-theme {
+  background:
+    radial-gradient(circle at top left, rgba(125, 211, 252, 0.24), transparent 28%),
+    radial-gradient(circle at top right, rgba(251, 191, 36, 0.16), transparent 20%),
+    radial-gradient(circle at 20% 80%, rgba(244, 114, 182, 0.14), transparent 22%),
+    var(--woozel-bg);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.woozel-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  opacity: 0.65;
+}
+
+.woozel-orb-left {
+  top: 72px;
+  left: -80px;
+  width: 260px;
+  height: 260px;
+  background: rgba(125, 211, 252, 0.34);
+}
+
+.woozel-orb-right {
+  right: -70px;
+  top: 180px;
+  width: 220px;
+  height: 220px;
+  background: rgba(251, 191, 36, 0.22);
+}

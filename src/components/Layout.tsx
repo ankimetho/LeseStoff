@@ -1,52 +1,75 @@
+import { useEffect } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { BookOpen, Settings, Home } from "lucide-react";
+import { Settings, House } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 
 export default function Layout() {
   const location = useLocation();
   const isReader = location.pathname.startsWith("/read");
 
+  useEffect(() => {
+    document.body.classList.add("woozel-theme");
+    return () => document.body.classList.remove("woozel-theme");
+  }, []);
+
   if (isReader) return <Outlet />;
 
   return (
-    <div className="min-h-screen bg-[#fdfcfb] text-[#2c2c2c] font-sans">
-      <nav className="border-b border-black/5 bg-white/50 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
-              <BookOpen size={24} />
+    <div className="min-h-screen bg-[var(--woozel-bg)] text-slate-900 font-[var(--font-woozel)]">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="woozel-orb woozel-orb-left" />
+        <div className="woozel-orb woozel-orb-right" />
+      </div>
+
+      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-white/35 shadow-[0_0_0_1px_rgba(186,230,253,0.65),0_28px_100px_rgba(40,119,196,0.18)] backdrop-blur-sm sm:my-6 sm:min-h-[calc(100vh-3rem)] sm:rounded-[2rem] sm:border sm:border-white/70">
+        <nav className="sticky top-0 z-50 border-b border-sky-200/60 bg-white/82 backdrop-blur-xl sm:rounded-t-[2rem]">
+          <div className="flex flex-col gap-3 px-4 py-3">
+            <Link to="/" className="flex items-center gap-3 group self-start">
+              <img
+                src="/woozel-logo.svg"
+                alt="WortWoozel 3001 Logo"
+                className="h-12 w-12 rounded-2xl border border-sky-200/80 bg-white shadow-lg shadow-sky-200/70 transition-transform duration-300 group-hover:scale-105"
+              />
+              <div className="leading-none">
+                <div className="text-[0.62rem] font-black uppercase tracking-[0.28em] text-sky-500">WortWoozel 3001</div>
+                <span className="text-base font-black tracking-tight text-slate-900">Leseabenteuer</span>
+              </div>
+            </Link>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                to="/"
+                className={cn(
+                  "inline-flex items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-bold transition-all",
+                  location.pathname === "/"
+                    ? "bg-sky-500 text-white shadow-lg shadow-sky-200"
+                    : "bg-white/70 text-slate-600 hover:bg-white hover:text-sky-600"
+                )}
+              >
+                <House size={18} />
+                Home
+              </Link>
+
+              <Link
+                to="/admin"
+                className={cn(
+                  "inline-flex items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-bold transition-all",
+                  location.pathname === "/admin"
+                    ? "bg-amber-400 text-slate-900 shadow-lg shadow-amber-100"
+                    : "bg-white/70 text-slate-600 hover:bg-white hover:text-amber-600"
+                )}
+              >
+                <Settings size={18} />
+                Admin
+              </Link>
             </div>
-            <span className="text-xl font-bold tracking-tight">WortWoozel</span>
-          </Link>
-          
-          <div className="flex items-center gap-6">
-            <Link 
-              to="/" 
-              className={cn(
-                "text-sm font-medium transition-colors hover:text-emerald-600 flex items-center gap-1.5",
-                location.pathname === "/" ? "text-emerald-600" : "text-gray-500"
-              )}
-            >
-              <Home size={18} />
-              Home
-            </Link>
-            <Link 
-              to="/admin" 
-              className={cn(
-                "text-sm font-medium transition-colors hover:text-emerald-600 flex items-center gap-1.5",
-                location.pathname === "/admin" ? "text-emerald-600" : "text-gray-500"
-              )}
-            >
-              <Settings size={18} />
-              Admin
-            </Link>
           </div>
-        </div>
-      </nav>
-      
-      <main className="max-w-5xl mx-auto px-6 py-12">
-        <Outlet />
-      </main>
+        </nav>
+
+        <main className="relative flex-1 px-4 py-6">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

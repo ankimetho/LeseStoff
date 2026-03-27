@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, ArrowRight, Calendar, Clock, CheckCircle2 } from "lucide-react";
+import { BookOpen, ArrowRight, Calendar, Clock, CheckCircle2, Sparkles, Star, PartyPopper } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/src/lib/utils";
 
@@ -76,63 +76,84 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="space-y-12">
-      <header className="text-center space-y-4">
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-5xl font-extrabold tracking-tight text-gray-900 sm:text-6xl"
-        >
-          Hallo Kira, Zeit zum <span className="text-emerald-600">Lesen!</span>
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="text-xl text-gray-500 max-w-2xl mx-auto"
-        >
-          Entdecke heute neue Geschichten und lerne etwas Spannendes.
-        </motion.p>
-      </header>
+    <div className="space-y-8">
+      <section className="space-y-6">
+        <div className="space-y-6">
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex max-w-full items-center gap-2 rounded-full border border-sky-200 bg-white/80 px-3 py-2 text-[0.65rem] font-black uppercase tracking-[0.18em] text-sky-600 shadow-lg shadow-sky-100"
+          >
+            <Sparkles size={14} />
+            Woozelifiziert
+          </motion.div>
+
+          <header className="space-y-4">
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-3xl text-4xl font-black tracking-tight text-slate-900"
+            >
+              Hallo Kira,
+              <span className="block text-sky-600">Zeit für ein</span>
+              <span className="block text-rose-500">Woozel-3001-Leseabenteuer!</span>
+            </motion.h1>
+
+            
+          </header>
+
+        </div>
+      </section>
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2 }}
-        className="max-w-2xl mx-auto"
+        className="max-w-3xl"
       >
         {task ? (
-          <div className="bg-white rounded-3xl p-8 shadow-xl shadow-gray-200/50 border border-gray-100 flex flex-col items-center text-center space-y-6 relative overflow-hidden group">
-            <div className="absolute top-0 left-0 w-full h-2 bg-emerald-500" />
+          <div className="relative overflow-hidden rounded-[2rem] border border-sky-100 bg-white/90 p-5 shadow-[0_20px_70px_rgba(49,130,206,0.14)] backdrop-blur-xl">
+            <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-amber-200/55 blur-3xl" />
+            <div className="absolute left-6 top-0 h-2 w-40 rounded-b-full bg-gradient-to-r from-sky-400 via-cyan-400 to-amber-300" />
 
-            <div className="w-20 h-20 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
-              <BookOpen size={40} />
-            </div>
+            <div className="relative flex flex-col gap-6">
+              <div className="space-y-4">
+                <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-sky-50 px-3 py-2 text-[0.7rem] font-black uppercase tracking-[0.14em] text-sky-600">
+                  <Calendar size={14} />
+                  Heutige Woozel-Mission
+                </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-center gap-2 text-sm font-bold text-emerald-600 uppercase tracking-wider">
-                <Calendar size={14} />
-                Heutige Aufgabe
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-black text-slate-900">{task.book_title}</h2>
+                  <p className="max-w-xl text-slate-600">
+                    Woozel hat schon den Lesesessel warmgemacht. Ein Klick und ihr startet direkt in die heutige Geschichte.
+                  </p>
+                </div>
               </div>
-              <h2 className="text-3xl font-bold text-gray-900">{task.book_title}</h2>
-            </div>
 
-            <Link
-              to={`/read/${task.filename}`}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-8 rounded-2xl flex items-center justify-center gap-2 transition-all hover:gap-4 shadow-lg shadow-emerald-600/20"
-            >
-              Jetzt lesen
-              <ArrowRight size={20} />
-            </Link>
+              <div className="flex flex-col items-stretch gap-4">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-gradient-to-br from-sky-100 via-cyan-50 to-amber-50 text-sky-600 shadow-inner">
+                  <BookOpen size={38} />
+                </div>
+
+                <Link
+                  to={`/read/${task.filename}`}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-500 px-5 py-4 text-base font-black text-white transition-all hover:gap-3 hover:bg-rose-600 hover:shadow-xl hover:shadow-rose-200"
+                >
+                  Jetzt mit Woozel lesen
+                  <ArrowRight size={20} />
+                </Link>
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="bg-gray-50 rounded-3xl p-12 border-2 border-dashed border-gray-200 text-center space-y-4">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mx-auto">
+          <div className="space-y-4 rounded-[2rem] border-2 border-dashed border-sky-200 bg-white/80 p-8 text-center shadow-lg shadow-sky-100">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sky-50 text-sky-400">
               <Calendar size={32} />
             </div>
             <div className="space-y-1">
-              <h3 className="text-xl font-bold text-gray-900">Keine Aufgabe für heute</h3>
-              <p className="text-gray-500">Frag deine Eltern, ob sie etwas für dich planen können!</p>
+              <h3 className="text-xl font-black text-slate-900">Keine Mission für heute</h3>
+              <p className="text-slate-500">Woozel wartet noch auf die nächste Geschichte. Frag deine Eltern nach neuem Lesefutter.</p>
             </div>
           </div>
         )}
@@ -145,8 +166,14 @@ export default function LandingPage() {
           transition={{ delay: 0.3 }}
           className="space-y-6"
         >
-          <h2 className="text-2xl font-bold text-gray-900 text-center">Deine Bücher</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-600">Buecherregal</p>
+              <h2 className="text-2xl font-black text-slate-900">Deine Woozel-Bibliothek</h2>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
             {books.map((book, idx) => {
               const progress = progressMap.get(book.id);
               const pct = progress?.progress_percent ?? 0;
@@ -162,25 +189,29 @@ export default function LandingPage() {
                 >
                   <Link
                     to={`/read/${book.filename}`}
-                    className="block bg-white rounded-2xl p-5 shadow-md shadow-gray-100 border border-gray-100 hover:shadow-lg hover:shadow-emerald-100 hover:border-emerald-200 transition-all group relative overflow-hidden"
+                    className="group relative block overflow-hidden rounded-[1.75rem] border border-sky-100 bg-white/90 p-5 shadow-[0_16px_40px_rgba(28,108,159,0.10)] transition-all hover:-translate-y-1 hover:border-sky-300 hover:shadow-[0_24px_50px_rgba(28,108,159,0.16)]"
                   >
+                    <div className="absolute inset-x-5 top-0 h-1 rounded-b-full bg-gradient-to-r from-sky-400 via-cyan-300 to-amber-300 opacity-80" />
+
                     {completed && (
-                      <div className="absolute top-3 right-3 text-emerald-500">
+                      <div className="absolute right-4 top-4 text-emerald-500">
                         <CheckCircle2 size={20} />
                       </div>
                     )}
 
                     <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 shrink-0 group-hover:bg-emerald-100 transition-colors">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 transition-colors group-hover:bg-sky-100">
                         <BookOpen size={24} />
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 truncate group-hover:text-emerald-600 transition-colors">
+                        <h3 className="truncate font-black text-slate-900 transition-colors group-hover:text-sky-600">
                           {book.title}
                         </h3>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
-                          <span className="uppercase font-medium">{getFileType(book.filename)}</span>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
+                          <span className="font-black uppercase tracking-[0.18em] text-slate-500">
+                            {getFileType(book.filename)}
+                          </span>
                           {timeSpent > 0 && (
                             <>
                               <span>·</span>
@@ -196,26 +227,26 @@ export default function LandingPage() {
 
                     {pct > 0 && (
                       <div className="mt-4">
-                        <div className="flex items-center justify-between text-xs mb-1.5">
-                          <span className="text-gray-500">Fortschritt</span>
-                          <span className="font-medium text-emerald-600">{Math.round(pct)}%</span>
+                        <div className="mb-1.5 flex items-center justify-between text-xs">
+                          <span className="text-slate-500">Fortschritt</span>
+                          <span className="font-black text-sky-600">{Math.round(pct)}%</span>
                         </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${pct}%` }}
                             transition={{ delay: 0.5 + idx * 0.05, duration: 0.5 }}
                             className={cn(
                               "h-full rounded-full",
-                              completed ? "bg-emerald-500" : "bg-gradient-to-r from-emerald-400 to-teal-400"
+                              completed ? "bg-emerald-500" : "bg-gradient-to-r from-sky-400 via-cyan-400 to-amber-300"
                             )}
                           />
                         </div>
                       </div>
                     )}
 
-                    <div className="mt-4 flex items-center justify-center gap-1 text-sm font-medium text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {pct > 0 ? "Weiterlesen" : "Jetzt lesen"}
+                    <div className="mt-4 flex items-center justify-center gap-1 text-sm font-black text-rose-500 opacity-0 transition-opacity group-hover:opacity-100">
+                      {pct > 0 ? "Weiterwoozen" : "Jetzt lesen"}
                       <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                     </div>
                   </Link>

@@ -86,9 +86,9 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="space-y-4">
         <h1 className="text-3xl font-bold tracking-tight">Admin Zone</h1>
-        <div className="flex bg-gray-100 p-1 rounded-xl">
+        <div className="grid grid-cols-2 rounded-xl bg-gray-100 p-1">
           <button 
             onClick={() => setActiveTab("library")}
             className={cn(
@@ -119,7 +119,7 @@ export default function AdminPage() {
             exit={{ opacity: 0, x: 20 }}
             className="space-y-6"
           >
-            <div className="bg-white border-2 border-dashed border-gray-200 rounded-3xl p-12 text-center space-y-4 relative group hover:border-emerald-400 transition-colors">
+            <div className="bg-white border-2 border-dashed border-gray-200 rounded-3xl p-8 text-center space-y-4 relative group hover:border-emerald-400 transition-colors">
               <input 
                 type="file" 
                 multiple 
@@ -138,7 +138,7 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {books.map((book) => (
                 <div key={book.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between group">
                   <div className="flex items-center gap-3 min-w-0">
@@ -187,8 +187,8 @@ export default function AdminPage() {
             exit={{ opacity: 0, x: 20 }}
             className="space-y-8"
           >
-            <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100 flex flex-col sm:flex-row gap-4 items-end">
-              <div className="flex-1 space-y-2 w-full">
+            <div className="bg-emerald-50 p-5 rounded-3xl border border-emerald-100 flex flex-col gap-4">
+              <div className="space-y-2 w-full">
                 <label className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Buch auswählen</label>
                 <select 
                   value={selectedBookId} 
@@ -199,7 +199,7 @@ export default function AdminPage() {
                   {books.map(b => <option key={b.id} value={b.id}>{b.title}</option>)}
                 </select>
               </div>
-              <div className="space-y-2 w-full sm:w-auto">
+              <div className="space-y-2 w-full">
                 <label className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Datum</label>
                 <input 
                   type="date" 
@@ -211,7 +211,7 @@ export default function AdminPage() {
               <button 
                 onClick={addToSchedule}
                 disabled={!selectedBookId}
-                className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-xl flex items-center gap-2 transition-all"
+                className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-xl flex items-center justify-center gap-2 transition-all w-full"
               >
                 <Plus size={20} />
                 Planen
