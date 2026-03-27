@@ -16,7 +16,7 @@ export default function Layout() {
             <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
               <BookOpen size={24} />
             </div>
-            <span className="text-xl font-bold tracking-tight">LeseStoff</span>
+            <span className="text-xl font-bold tracking-tight">WortWoozel</span>
           </Link>
           
           <div className="flex items-center gap-6">

@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, ReactNode } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Maximize, Minimize, ChevronLeft, ChevronRight,
-  BookOpen, ZoomIn, ZoomOut
+  BookOpen, ZoomIn, ZoomOut, List, X
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import ePub, { Rendition } from "epubjs";
+import ePub, { Rendition, NavItem } from "epubjs";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
@@ -121,23 +121,25 @@ export default function ReaderPage() {
   const navigate = useNavigate();
 
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isLoading, setIsLoading]       = useState(true);
-  const [error, setError]               = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showToc, setShowToc] = useState(false);
 
-  // PDF state
-  const [pdfDoc, setPdfDoc]   = useState<pdfjsLib.PDFDocumentProxy | null>(null);
+  const [toc, setToc] = useState<NavItem[]>([]);
+
+  const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [pageNum, setPageNum] = useState(1);
   const [numPages, setNumPages] = useState(0);
-  const [scale, setScale]     = useState(1.7);
+  const [scale, setScale] = useState(1.7);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // EPUB state
-  const [rendition, setRendition]       = useState<Rendition | null>(null);
+  const [rendition, setRendition] = useState<Rendition | null>(null);
   const [epubProgress, setEpubProgress] = useState<{ current: number; total: number } | null>(null);
-  const [theme, setTheme]   = useState<"default" | "sepia" | "dark">("default");
+  const [theme, setTheme] = useState<"default" | "sepia" | "dark">("default");
   const [fontSize, setFontSize] = useState(170);
   const epubContainerRef = useRef<HTMLDivElement>(null);
-  const epubCfiRef = useRef<string | undefined>(undefined); // latest CFI for saving
+  const epubCfiRef = useRef<string | undefined>(undefined);
+  const bookRef = useRef<ReturnType<typeof ePub> | null>(null);
 
   // Timing / progress helpers
   const containerRef    = useRef<HTMLDivElement>(null);
@@ -331,6 +333,7 @@ export default function ReaderPage() {
     if (!isEpub || !filename || !epubContainerRef.current) return;
 
     const book = ePub(fileUrl);
+    bookRef.current = book;
     const rend = book.renderTo(epubContainerRef.current, {
       width: "100%",
       height: "100%",
@@ -338,7 +341,10 @@ export default function ReaderPage() {
       manager: "default",
     });
 
-    // Prefer backend CFI, fall back to localStorage
+    book.loaded.navigation.then((nav) => {
+      setToc(nav.toc);
+    });
+
     const savedCfi =
       epubCfiRef.current ||
       localStorage.getItem(`reading_progress_epub_${filename}`) ||
@@ -361,7 +367,6 @@ export default function ReaderPage() {
       if (!cfi || !filename) return;
 
       epubCfiRef.current = cfi;
-      // Keep localStorage as backup
       localStorage.setItem(`reading_progress_epub_${filename}`, cfi);
 
       if (location.start.displayed) {
@@ -370,7 +375,6 @@ export default function ReaderPage() {
         pagesReadRef.current += 1;
 
         const pct = total > 0 ? Math.round((page / total) * 100) : 0;
-        // Save to backend on every relocation
         void saveProgressToBackend({
           position:        cfi,
           progressPercent: pct,
@@ -430,6 +434,28 @@ export default function ReaderPage() {
     }
   };
 
+  const goToChapter = (href: string) => {
+    if (rendition) {
+      rendition.display(href);
+      setShowToc(false);
+    }
+  };
+
+  const renderTocItems = (items: NavItem[], depth = 0): ReactNode => {
+    return items.map((item) => (
+      <div key={item.id || item.href}>
+        <button
+          onClick={() => goToChapter(item.href)}
+          className="w-full text-left px-4 py-2 hover:bg-emerald-500/10 text-gray-200 hover:text-emerald-400 transition-colors rounded-lg"
+          style={{ paddingLeft: `${16 + depth * 16}px` }}
+        >
+          {item.label}
+        </button>
+        {item.subitems && item.subitems.length > 0 && renderTocItems(item.subitems, depth + 1)}
+      </div>
+    ));
+  };
+
   // ═══ Render ════════════════════════════════════════════════════════════════
 
   return (
@@ -451,15 +477,24 @@ export default function ReaderPage() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2">
+        {isEpub && toc.length > 0 && (
           <button
-            onClick={toggleFullscreen}
+            onClick={() => setShowToc(true)}
             className="p-2 hover:bg-white/10 rounded-lg transition-all"
-            title={isFullscreen ? "Vollbild beenden" : "Vollbild"}
+            title="Inhaltsverzeichnis"
           >
-            {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+            <List size={20} />
           </button>
-        </div>
+        )}
+        <button
+          onClick={toggleFullscreen}
+          className="p-2 hover:bg-white/10 rounded-lg transition-all"
+          title={isFullscreen ? "Vollbild beenden" : "Vollbild"}
+        >
+          {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+        </button>
+      </div>
       </div>
 
       {/* ── Content Area ── */}
@@ -600,13 +635,48 @@ export default function ReaderPage() {
           </button>
         </div>
 
-        {/* Right: balance spacer */}
-        <div className="hidden sm:block w-48 order-3" />
+      {/* Right: balance spacer */}
+      <div className="hidden sm:block w-48 order-3" />
       </div>
 
+      {/* ── Table of Contents Sidebar ── */}
+      <AnimatePresence>
+        {showToc && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-[200]"
+              onClick={() => setShowToc(false)}
+            />
+            <motion.div
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed left-0 top-0 bottom-0 w-80 max-w-[85vw] bg-zinc-900 z-[201] shadow-2xl flex flex-col"
+            >
+              <div className="flex items-center justify-between p-4 border-b border-white/10">
+                <h2 className="text-lg font-bold text-white">Inhaltsverzeichnis</h2>
+                <button
+                  onClick={() => setShowToc(false)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-2">
+                {renderTocItems(toc)}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       <style>{`
-        .epub-viewer iframe { border: none !important; }
-      `}</style>
-    </div>
+.epub-viewer iframe { border: none !important; }
+`}</style>
+      </div>
   );
 }

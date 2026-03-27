@@ -169,46 +169,49 @@ async function startServer() {
   });
 
   // Get/save progress by filename (for the reader, which only knows the filename)
-  app.get("/api/progress/by-filename/:filename", (req, res) => {
-    const { filename } = req.params;
-    const { user_id = 'default' } = req.query;
-    const book = db.prepare("SELECT id FROM books WHERE filename = ?").get(filename) as any;
-    if (!book) return res.json(null);
-    const progress = db.prepare(`
-      SELECT * FROM reading_progress WHERE book_id = ? AND user_id = ?
-    `).get(book.id, user_id);
-    res.json(progress ? { ...progress, book_id: book.id } : { book_id: book.id });
-  });
+app.get("/api/progress/by-filename/:filename", (req, res) => {
+  const { filename } = req.params;
+  const decodedFilename = decodeURIComponent(filename);
+  const { user_id = 'default' } = req.query;
+  const book = db.prepare("SELECT id FROM books WHERE filename = ?").get(decodedFilename) as any;
+  if (!book) return res.json(null);
+  const progress = db.prepare(`
+    SELECT * FROM reading_progress WHERE book_id = ? AND user_id = ?
+  `).get(book.id, user_id);
+  res.json(progress ? { ...progress, book_id: book.id } : { book_id: book.id });
+});
 
-  app.post("/api/progress/by-filename/:filename", (req, res) => {
-    const { filename } = req.params;
-    const { user_id = 'default', position, progress_percent, completed, time_spent_seconds } = req.body;
-    const book = db.prepare("SELECT id FROM books WHERE filename = ?").get(filename) as any;
-    if (!book) return res.status(404).json({ error: "Book not found" });
-    db.prepare(`
-      INSERT INTO reading_progress (book_id, user_id, position, progress_percent, completed, time_spent_seconds, last_read)
-      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(book_id, user_id) DO UPDATE SET
-        position = excluded.position,
-        progress_percent = excluded.progress_percent,
-        completed = excluded.completed,
-        time_spent_seconds = time_spent_seconds + excluded.time_spent_seconds,
-        last_read = CURRENT_TIMESTAMP
-    `).run(book.id, user_id, position, progress_percent || 0, completed ? 1 : 0, time_spent_seconds || 0);
-    res.json({ success: true, book_id: book.id });
-  });
+app.post("/api/progress/by-filename/:filename", (req, res) => {
+  const { filename } = req.params;
+  const decodedFilename = decodeURIComponent(filename);
+  const { user_id = 'default', position, progress_percent, completed, time_spent_seconds } = req.body;
+  const book = db.prepare("SELECT id FROM books WHERE filename = ?").get(decodedFilename) as any;
+  if (!book) return res.status(404).json({ error: "Book not found" });
+  db.prepare(`
+    INSERT INTO reading_progress (book_id, user_id, position, progress_percent, completed, time_spent_seconds, last_read)
+    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(book_id, user_id) DO UPDATE SET
+    position = excluded.position,
+    progress_percent = excluded.progress_percent,
+    completed = excluded.completed,
+    time_spent_seconds = time_spent_seconds + excluded.time_spent_seconds,
+    last_read = CURRENT_TIMESTAMP
+  `).run(book.id, user_id, position, progress_percent || 0, completed ? 1 : 0, time_spent_seconds || 0);
+  res.json({ success: true, book_id: book.id });
+});
 
-  app.post("/api/session/by-filename/:filename", (req, res) => {
-    const { filename } = req.params;
-    const { user_id = 'default', duration_seconds, pages_read } = req.body;
-    const book = db.prepare("SELECT id FROM books WHERE filename = ?").get(filename) as any;
-    if (!book) return res.status(404).json({ error: "Book not found" });
-    db.prepare(`
-      INSERT INTO session_logs (book_id, user_id, duration_seconds, pages_read)
-      VALUES (?, ?, ?, ?)
-    `).run(book.id, user_id, duration_seconds, pages_read || 0);
-    res.json({ success: true });
-  });
+app.post("/api/session/by-filename/:filename", (req, res) => {
+  const { filename } = req.params;
+  const decodedFilename = decodeURIComponent(filename);
+  const { user_id = 'default', duration_seconds, pages_read } = req.body;
+  const book = db.prepare("SELECT id FROM books WHERE filename = ?").get(decodedFilename) as any;
+  if (!book) return res.status(404).json({ error: "Book not found" });
+  db.prepare(`
+    INSERT INTO session_logs (book_id, user_id, duration_seconds, pages_read)
+    VALUES (?, ?, ?, ?)
+  `).run(book.id, user_id, duration_seconds, pages_read || 0);
+  res.json({ success: true });
+});
 
   app.post("/api/progress", (req, res) => {
     const { book_id, user_id = 'default', position, progress_percent, completed, time_spent_seconds } = req.body;
